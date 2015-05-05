@@ -6,7 +6,7 @@
  **************************************************************************/
 
 /**
- * @file siglhandler.go
+ * @file sigl.go
  * @author divesli(divesli@gmail.com)
  * @date 2015/05/05 10:43:41
  * @version $Revision$

@@ -38,6 +38,7 @@ import (
 const (
 	et = 1
 	lp = 30000
+	sp = ","
 )
 
 var w sync.WaitGroup
@@ -70,13 +71,13 @@ func getinput() {
 }
 
 func pftitle() {
-	out := fmt.Sprintf("%10s %10s %10s %10s %10s %10s %10s", "名称", "当前价格", "涨跌幅", "最高价格", "最低价格", "成交量", "成交额")
+	out := fmt.Sprintf("%10s %10s %10s %10s %10s %10s %10s\n%s", "名称", "当前价格", "涨跌幅", "最高价格", "最低价格", "成交量", "成交额", f)
 	fmt.Println(out)
-	fmt.Println(f)
 }
 
 func run(ids string) {
 	url := "http://api.money.126.net/data/feed/"
+	slids := strings.Split(ids, sp)
 	for {
 		// 清屏命令
 		cmd := exec.Command("clear")
@@ -113,9 +114,11 @@ func run(ids string) {
 			os.Exit(1)
 		}
 
-		for _, v := range data {
-			w.Add(1)
-			go spline(v)
+		for _, id := range slids {
+			if v, found := data[id]; found {
+				w.Add(1)
+				go spline(v)
+			}
 		}
 
 		w.Wait()
