@@ -18,38 +18,55 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
 	"stock/lib"
 	"stock/request"
+	"stock/sigl"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+)
+
+const (
+	et = 1
+	lp = 30000
 )
 
 var w sync.WaitGroup
 var f string
+var c chan uint
 
 func main() {
 	f = strings.Repeat("-", 100)
-	for i := 0; i < 10; i++ {
-		cmd := exec.Command("clear")
-		cmd.Stdout = os.Stdout
-		cmd.Run()
-		pftitle()
-		list := []string{"0601169", "0601377", "0601318", "0600030", "0600036"}
-		for _, id := range list {
-			w.Add(1)
-			go run(id)
-		}
-		w.Wait()
-		time.Sleep(2000 * time.Millisecond)
+	ids := "0601377,0601318,0600030,0600036"
+	sl := sigl.NewSigl()
+	sl.Register(syscall.SIGINT, siglhandler)
+	sl.Register(syscall.SIGKILL, siglhandler)
+	c = make(chan uint)
+	go sl.Run()
+	go run(ids)
+	go getinput()
+	<-c // 从chan 取值,取不到即阻塞等待只到取到值
+}
+
+func siglhandler(sg os.Signal) {
+	c <- et
+}
+
+func getinput() {
+	reader := bufio.NewReader(os.Stdin)
+	char, err := reader.ReadString('\n')
+	if err == io.EOF || char == "\n" {
+		c <- et // 向chan写入 1
 	}
-	//w.Wait()
 }
 
 func pftitle() {
@@ -58,46 +75,68 @@ func pftitle() {
 	fmt.Println(f)
 }
 
-func run(id string) {
-	defer w.Done()
-	url := "http://api.money.126.net/data/feed/" + id
-	req := request.Get(url)
-	jsonstr, err := req.GetBody()
-	defer req.Close()
+func run(ids string) {
+	url := "http://api.money.126.net/data/feed/"
+	for {
+		// 清屏命令
+		cmd := exec.Command("clear")
+		cmd.Stdout = os.Stdout
+		cmd.Run()
 
-	if err != nil {
-		fmt.Println(err)
+		pftitle()
+
+		req := request.Get(url + ids)
+		jsonstr, err := req.GetBody()
+		defer req.Close()
+
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		reg, err := regexp.Compile("\\((.*)\\)")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		match := reg.FindStringSubmatch(jsonstr)
+		if len(match) != 2 {
+			fmt.Println("Match failed")
+			fmt.Println(match)
+			os.Exit(1)
+		}
+
+		str := match[1]
+		var data map[string]map[string]interface{}
+		if err := json.Unmarshal([]byte(str), &data); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		for _, v := range data {
+			w.Add(1)
+			go spline(v)
+		}
+
+		w.Wait()
+
+		time.Sleep(lp * time.Millisecond)
 	}
-	reg, err := regexp.Compile("\\((.*)\\)")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	match := reg.FindStringSubmatch(jsonstr)
-	if len(match) != 2 {
-		fmt.Println("Match failed")
-		fmt.Println(match)
-		os.Exit(1)
-	}
-	str := match[1]
-	var data map[string]map[string]interface{}
-	if err := json.Unmarshal([]byte(str), &data); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	for _, v := range data {
-		name := fmt.Sprintf("%s", v["name"])
-		price := fmt.Sprintf("%.2f", v["price"])
-		per, _ := strconv.ParseFloat(fmt.Sprintf("%.3f", v["percent"]), 64)
-		perc := per * 100
-		percent := lib.Red(fmt.Sprintf("%.2f%%", perc))
-		high := fmt.Sprintf("%.2f", v["high"])
-		low := fmt.Sprintf("%.2f", v["low"])
-		vol, _ := strconv.ParseFloat(fmt.Sprintf("%.3f", v["volume"]), 64)
-		volume := fmt.Sprintf("%.2f万手", vol/1000000)
-		turn, _ := strconv.ParseFloat(fmt.Sprintf("%.3f", v["turnover"]), 64)
-		turnover := fmt.Sprintf("%.2f亿", turn/100000000)
-		out := fmt.Sprintf("%10s %10s %26s %13s %13s %16s %10s\n%s", name, price, percent, high, low, volume, turnover, f)
-		fmt.Println(out)
-	}
+}
+
+func spline(v map[string]interface{}) {
+	defer w.Done()
+	name := fmt.Sprintf("%s", v["name"])
+	price := fmt.Sprintf("%.2f", v["price"])
+	per, _ := strconv.ParseFloat(fmt.Sprintf("%.3f", v["percent"]), 64)
+	perc := per * 100
+	percent := lib.Red(fmt.Sprintf("%.2f%%", perc))
+	high := fmt.Sprintf("%.2f", v["high"])
+	low := fmt.Sprintf("%.2f", v["low"])
+	vol, _ := strconv.ParseFloat(fmt.Sprintf("%.3f", v["volume"]), 64)
+	volume := fmt.Sprintf("%.2f万手", vol/1000000)
+	turn, _ := strconv.ParseFloat(fmt.Sprintf("%.3f", v["turnover"]), 64)
+	turnover := fmt.Sprintf("%.2f亿", turn/100000000)
+	out := fmt.Sprintf("%10s %10s %26s %13s %13s %16s %10s\n%s", name, price, percent, high, low, volume, turnover, f)
+	fmt.Println(out)
 }
