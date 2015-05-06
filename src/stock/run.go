@@ -37,9 +37,10 @@ import (
 )
 
 const (
-	et = 1
-	lp = 30000
-	sp = ","
+	et  = 1
+	sec = 1000
+	lp  = 30
+	sp  = ","
 )
 
 var w sync.WaitGroup
@@ -59,12 +60,20 @@ func main() {
 	if err != nil {
 		stsp = sp
 	}
+	var stlp int
+	st_lp, err := ini.Get("stock_refresh")
+	if err != nil {
+		stlp = lp
+	} else {
+		stlp, _ = strconv.Atoi(st_lp)
+	}
+	stlp *= sec
 	sl := sigl.NewSigl()
 	sl.Register(syscall.SIGINT, siglhandler)
 	sl.Register(syscall.SIGKILL, siglhandler)
 	c = make(chan uint)
 	go sl.Run()
-	go run(ids, stsp)
+	go run(ids, stsp, stlp)
 	go getinput()
 	<-c // 从chan 取值,取不到即阻塞等待只到取到值
 }
@@ -93,7 +102,7 @@ func pftitle() {
 	fmt.Println(out)
 }
 
-func run(ids, stsp string) {
+func run(ids, stsp string, stlp int) {
 	url := "http://api.money.126.net/data/feed/"
 	slids := strings.Split(ids, stsp)
 	for {
@@ -140,7 +149,7 @@ func run(ids, stsp string) {
 
 		w.Wait()
 
-		time.Sleep(lp * time.Millisecond)
+		time.Sleep(time.Duration(stlp) * time.Millisecond)
 	}
 }
 
