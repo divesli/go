@@ -53,7 +53,7 @@ func Parse(file string) (*IniConf, error) {
 	ini.file = file
 	fp, err := os.Open(file)
 	if err != nil {
-		return nil, err
+		return ini, err
 	}
 	ini.Lock()
 	defer ini.Unlock()

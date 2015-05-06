@@ -49,8 +49,18 @@ var c chan uint
 
 func main() {
 	f = strings.Repeat("-", 100)
-	confpath := getpath()
-	confile := filepath.Join(confpath, "config.ini")
+	var confile string
+	if len(os.Args) > 1 {
+		confile = os.Args[1]
+	} else {
+		confpath := getpath()
+		confile = filepath.Join(confpath, "config.ini")
+	}
+
+	if _, err := os.Stat(confile); err != nil {
+		fmt.Printf("%v\n", err)
+	}
+
 	ini, _ := lib.Parse(confile)
 	ids, err := ini.Get("stock_code")
 	if err != nil {
@@ -67,6 +77,7 @@ func main() {
 	} else {
 		stlp, _ = strconv.Atoi(st_lp)
 	}
+
 	stlp *= sec
 	sl := sigl.NewSigl()
 	sl.Register(syscall.SIGINT, siglhandler)
