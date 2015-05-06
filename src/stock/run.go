@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"stock/lib"
 	"stock/request"
@@ -47,13 +48,23 @@ var c chan uint
 
 func main() {
 	f = strings.Repeat("-", 100)
-	ids := "0601377,0601318,0600030,0600036"
+	confpath := getpath()
+	confile := filepath.Join(confpath, "config.ini")
+	ini, _ := lib.Parse(confile)
+	ids, err := ini.Get("stock_code")
+	if err != nil {
+		ids = "0601377,0601318,0600030,0600036"
+	}
+	stsp, err := ini.Get("stock_sp")
+	if err != nil {
+		stsp = sp
+	}
 	sl := sigl.NewSigl()
 	sl.Register(syscall.SIGINT, siglhandler)
 	sl.Register(syscall.SIGKILL, siglhandler)
 	c = make(chan uint)
 	go sl.Run()
-	go run(ids)
+	go run(ids, stsp)
 	go getinput()
 	<-c // 从chan 取值,取不到即阻塞等待只到取到值
 }
@@ -70,14 +81,21 @@ func getinput() {
 	}
 }
 
+func getpath() string {
+	workpath, _ := os.Getwd()
+	workpath, _ = filepath.Abs(workpath)
+	confpath := filepath.Join(workpath, "config")
+	return confpath
+}
+
 func pftitle() {
 	out := fmt.Sprintf("%10s %10s %10s %10s %10s %10s %10s\n%s", "名称", "当前价格", "涨跌幅", "最高价格", "最低价格", "成交量", "成交额", f)
 	fmt.Println(out)
 }
 
-func run(ids string) {
+func run(ids, stsp string) {
 	url := "http://api.money.126.net/data/feed/"
-	slids := strings.Split(ids, sp)
+	slids := strings.Split(ids, stsp)
 	for {
 		// 清屏命令
 		cmd := exec.Command("clear")
@@ -89,7 +107,6 @@ func run(ids string) {
 		req := request.Get(url + ids)
 		jsonstr, err := req.GetBody()
 		defer req.Close()
-
 		if err != nil {
 			fmt.Println(err)
 		}
