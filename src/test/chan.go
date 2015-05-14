@@ -20,6 +20,7 @@ package main
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 var c chan uint
@@ -32,6 +33,7 @@ func say(i int) {
 }
 
 func main() {
+	fmt.Printf("start = %d\n", time.Now().Unix())
 	c = make(chan uint, 2)
 	for i := 1; i <= 10; i++ {
 		w.Add(1)

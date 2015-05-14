@@ -20,7 +20,7 @@ package sigl
 import (
 	"os"
 	"os/signal"
-	"syscall"
+	//	"syscall"
 )
 
 type signalHandler func(sg os.Signal)
@@ -49,7 +49,12 @@ func (s *Sigl) handler(sg os.Signal) (err error) {
 
 func (s *Sigl) Run() {
 	ch := make(chan os.Signal)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)
+	var sigs []os.Signal
+	for sig, _ := range s.m {
+		sigs = append(sigs, sig)
+	}
+	//signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)
+	signal.Notify(ch, sigs...)
 	//signal.Notify(ch)
 	sg := <-ch
 	s.handler(sg)

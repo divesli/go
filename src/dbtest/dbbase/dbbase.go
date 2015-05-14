@@ -20,21 +20,21 @@ package dbbase
 import (
 	"database/sql"
 	"fmt"
-	_ "go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
 	"strings"
 )
 
-type dbBase struct {
+type DBBase struct {
 	dns  string
 	conn *sql.DB
 	tx   *sql.Tx
 }
 
-func NewdbBase() *dbBase {
-	return &dbBase{"", nil, nil}
+func NewDBBase() *DBBase {
+	return &DBBase{"", nil, nil}
 }
 
-func (db *dbBase) SetConfig(config map[string]string) *dbBase {
+func (db *DBBase) SetConfig(config map[string]string) *DBBase {
 	host := config["db_host"]
 	port := config["db_port"]
 	user := config["db_user"]
@@ -45,7 +45,7 @@ func (db *dbBase) SetConfig(config map[string]string) *dbBase {
 	return db
 }
 
-func (db *dbBase) open() (*sql.DB, error) {
+func (db *DBBase) open() (*sql.DB, error) {
 	if db.conn != nil {
 		return db.conn, nil
 	}
@@ -53,19 +53,21 @@ func (db *dbBase) open() (*sql.DB, error) {
 		return nil, fmt.Errorf("Database's dns failed")
 	}
 	dbConn, err := sql.Open("mysql", db.dns)
-	panicerr(err)
+	if err != nil {
+		return nil, err
+	}
 	db.conn = dbConn
 	return db.conn, nil
 }
 
-func (db *dbBase) Close() {
+func (db *DBBase) Close() {
 	if db.conn != nil {
 		db.conn.Close()
 		db.conn = nil
 	}
 }
 
-func (db *dbBase) Query(sqlstr string) (res []map[string]string) {
+func (db *DBBase) Query(sqlstr string) (res []map[string]string) {
 	conn, err := db.open()
 	panicerr(err)
 	var rows *sql.Rows
@@ -104,7 +106,7 @@ func (db *dbBase) Query(sqlstr string) (res []map[string]string) {
 	return res
 }
 
-func (db *dbBase) Begin() *dbBase {
+func (db *DBBase) Begin() *DBBase {
 	conn, err := db.open()
 	panicerr(err)
 	db.tx, err = conn.Begin()
@@ -112,7 +114,7 @@ func (db *dbBase) Begin() *dbBase {
 	return db
 }
 
-func (db *dbBase) Commit() {
+func (db *DBBase) Commit() {
 	if db.tx != nil {
 		err := db.tx.Commit()
 		db.tx = nil
@@ -120,19 +122,19 @@ func (db *dbBase) Commit() {
 	}
 }
 
-func (db *dbBase) Rollback() {
+func (db *DBBase) Rollback() {
 	if db.tx != nil {
 		err := db.tx.Rollback()
 		db.tx = nil
 		panicerr(err)
 	}
 }
-func (db *dbBase) str2lower(str string) string {
+func (db *DBBase) str2lower(str string) string {
 	str = strings.TrimSpace(str)
 	str = strings.ToLower(str)
 	return str
 }
-func (db *dbBase) Insert(sqlstr string) (lastId int64) {
+func (db *DBBase) Insert(sqlstr string) (lastId int64) {
 	sqlstr = db.str2lower(sqlstr)
 	if !strings.HasPrefix(sqlstr, "insert") {
 		panicerr(fmt.Errorf("It's not insert sql,[%s]", sqlstr))
@@ -143,7 +145,7 @@ func (db *dbBase) Insert(sqlstr string) (lastId int64) {
 	return lastInsertId
 }
 
-func (db *dbBase) Delete(sqlstr string) (n int64) {
+func (db *DBBase) Delete(sqlstr string) (n int64) {
 	sqlstr = db.str2lower(sqlstr)
 	if !strings.HasPrefix(sqlstr, "delete") {
 		panicerr(fmt.Errorf("It's not delete sql,[%s]", sqlstr))
@@ -154,7 +156,7 @@ func (db *dbBase) Delete(sqlstr string) (n int64) {
 	return affect
 }
 
-func (db *dbBase) Update(sqlstr string) (n int64) {
+func (db *DBBase) Update(sqlstr string) (n int64) {
 	sqlstr = db.str2lower(sqlstr)
 	if !strings.HasPrefix(sqlstr, "update") {
 		panicerr(fmt.Errorf("It's not update sql,[%s]", sqlstr))
@@ -165,7 +167,7 @@ func (db *dbBase) Update(sqlstr string) (n int64) {
 	return affect
 }
 
-func (db *dbBase) Exec(sqlstr string) (res sql.Result) {
+func (db *DBBase) Exec(sqlstr string) (res sql.Result) {
 	conn, err := db.open()
 	panicerr(err)
 

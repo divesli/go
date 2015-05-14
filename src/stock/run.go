@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	//"runtime"
 	"stock/lib"
 	"stock/request"
 	"stock/sigl"
@@ -48,6 +49,7 @@ var f string
 var c chan uint
 
 func main() {
+	//runtime.GOMAXPROCS(runtime.NumCPU())
 	f = strings.Repeat("-", 100)
 	var confile string
 	if len(os.Args) > 1 {
@@ -90,6 +92,7 @@ func main() {
 }
 
 func siglhandler(sg os.Signal) {
+	fmt.Println("cache signal and exit")
 	c <- et
 }
 
@@ -140,7 +143,6 @@ func run(ids, stsp string, stlp int) {
 		match := reg.FindStringSubmatch(jsonstr)
 		if len(match) != 2 {
 			fmt.Println("Match failed")
-			fmt.Println(match)
 			os.Exit(1)
 		}
 
