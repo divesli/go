@@ -26,7 +26,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	//"runtime"
+	"runtime"
 	"stock/lib"
 	"stock/request"
 	"stock/sigl"
@@ -49,7 +49,7 @@ var f string
 var c chan uint
 
 func main() {
-	//runtime.GOMAXPROCS(runtime.NumCPU())
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	f = strings.Repeat("-", 100)
 	var confile string
 	if len(os.Args) > 1 {
@@ -82,10 +82,9 @@ func main() {
 
 	stlp *= sec
 	sl := sigl.NewSigl()
-	sl.Register(syscall.SIGINT, siglhandler)
-	sl.Register(syscall.SIGKILL, siglhandler)
+	sl.Register(siglhandler, syscall.SIGINT, syscall.SIGUSR2, syscall.SIGKILL)
 	c = make(chan uint)
-	go sl.Run()
+	sl.Run()
 	go run(ids, stsp, stlp)
 	go getinput()
 	<-c // 从chan 取值,取不到即阻塞等待只到取到值

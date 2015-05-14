@@ -33,10 +33,13 @@ func NewSigl() *Sigl {
 	return &Sigl{m: make(map[os.Signal]signalHandler)}
 }
 
-func (s *Sigl) Register(sg os.Signal, handler signalHandler) {
-	if _, found := s.m[sg]; !found {
-		s.m[sg] = handler
+func (s *Sigl) Register(handler signalHandler, sigs ...os.Signal) *Sigl {
+	for _, sig := range sigs {
+		if _, found := s.m[sig]; !found {
+			s.m[sig] = handler
+		}
 	}
+	return s
 }
 
 func (s *Sigl) handler(sg os.Signal) (err error) {
@@ -53,9 +56,11 @@ func (s *Sigl) Run() {
 	for sig, _ := range s.m {
 		sigs = append(sigs, sig)
 	}
-	//signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)
-	signal.Notify(ch, sigs...)
-	//signal.Notify(ch)
-	sg := <-ch
-	s.handler(sg)
+	go func() {
+		//signal.Notify(ch, syscall.SIGINT, syscall.SIGKILL)
+		signal.Notify(ch, sigs...)
+		//signal.Notify(ch)
+		sg := <-ch
+		s.handler(sg)
+	}()
 }
