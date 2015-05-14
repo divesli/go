@@ -91,7 +91,9 @@ func main() {
 }
 
 func siglhandler(sg os.Signal) {
-	fmt.Println("cache signal and exit")
+	time.Sleep(20 * time.Millisecond)
+	fmt.Println("Catch signal and exit")
+	time.Sleep(20 * time.Millisecond)
 	c <- et
 }
 
