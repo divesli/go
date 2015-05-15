@@ -103,17 +103,17 @@ func main() {
 }
 
 func siglhandler(sg os.Signal) {
-	time.Sleep(20 * time.Millisecond)
 	fmt.Println("Catch signal and exit")
-	time.Sleep(20 * time.Millisecond)
 	c <- et
 }
 
 func getinput() {
-	reader := bufio.NewReader(os.Stdin)
-	char, err := reader.ReadString('\n')
-	if err == io.EOF || char == "\n" {
-		c <- et // 向chan写入 1
+	for {
+		reader := bufio.NewReader(os.Stdin)
+		char, err := reader.ReadString('\n')
+		if err == io.EOF || char == "\n" {
+			c <- et // 向chan写入 1
+		}
 	}
 }
 
