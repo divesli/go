@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	rtmg "stock/goruntimemanage"
 	"stock/lib"
 	"stock/request"
 	"stock/sigl"
@@ -38,18 +39,27 @@ import (
 )
 
 const (
-	et  = 1
-	sec = 1000
-	lp  = 30
-	sp  = ","
+	et           = 1
+	sec          = 1000
+	lp           = 30
+	sp           = ","
+	maxGoRuntime = 1000
 )
 
 var w sync.WaitGroup
 var f string
 var c chan uint
+var goRtManage *rtmg.GoRtManage
 
 func main() {
+	//var mem runtime.MemStats
+	//runtime.ReadMemStats(&mem)
+	//fmt.Printf("Start alloc mem %d", mem.TotalAlloc)
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	// 管理最大的携程数量
+	goRtManage = rtmg.NewGoRtManage(maxGoRuntime)
+	defer goRtManage.Close()
+
 	f = strings.Repeat("-", 100)
 	var confile string
 	if len(os.Args) > 1 {
@@ -87,6 +97,8 @@ func main() {
 	sl.Run()
 	go run(ids, stsp, stlp)
 	go getinput()
+	//runtime.ReadMemStats(&mem)
+	//fmt.Printf("Start alloc mem %d", mem.TotalAlloc)
 	<-c // 从chan 取值,取不到即阻塞等待只到取到值
 }
 
@@ -157,6 +169,7 @@ func run(ids, stsp string, stlp int) {
 		for _, id := range slids {
 			if v, found := data[id]; found {
 				w.Add(1)
+				goRtManage.Push()
 				go spline(v)
 			}
 		}
@@ -169,6 +182,7 @@ func run(ids, stsp string, stlp int) {
 
 func spline(v map[string]interface{}) {
 	defer w.Done()
+	defer goRtManage.Pop()
 	name := fmt.Sprintf("%s", v["name"])
 	price := fmt.Sprintf("%.2f", v["price"])
 	per, _ := strconv.ParseFloat(fmt.Sprintf("%.3f", v["percent"]), 64)
