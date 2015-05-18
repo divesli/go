@@ -31,6 +31,7 @@ import (
 	"stock/lib"
 	"stock/request"
 	"stock/sigl"
+	"stock/slog"
 	"strconv"
 	"strings"
 	"sync"
@@ -50,6 +51,10 @@ var w sync.WaitGroup
 var f string
 var c chan uint
 var goRtManage *rtmg.GoRtManage
+
+func init() {
+	slog.Level("warning")
+}
 
 func main() {
 	//var mem runtime.MemStats
@@ -103,7 +108,7 @@ func main() {
 }
 
 func siglhandler(sg os.Signal) {
-	fmt.Println("Catch signal and exit")
+	slog.Warning("Catch signal and exit")
 	c <- et
 }
 
